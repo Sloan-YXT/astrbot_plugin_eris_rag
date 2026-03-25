@@ -1,0 +1,38 @@
+{
+  "enabled": {
+    "description": "启用 RAG 人格增强",
+    "type": "bool",
+    "default": true,
+    "hint": "关闭后 LLM 请求不再调用 RAG 服务器，/ask 和 /rag_health 命令仍可用"
+  },
+  "rag_server_url": {
+    "description": "RAG 服务器地址",
+    "type": "string",
+    "default": "http://192.168.3.22:8787",
+    "hint": "Eris RAG Server 的完整地址，如 http://192.168.3.22:8787"
+  },
+  "timeout_ms": {
+    "description": "请求超时（毫秒）",
+    "type": "int",
+    "default": 10000,
+    "hint": "RAG 服务器请求超时时间，建议 5000-15000"
+  },
+  "context_count": {
+    "description": "传递对话上下文条数",
+    "type": "int",
+    "default": 6,
+    "hint": "传给 RAG 服务器的最近对话条数（user+assistant），建议 6"
+  },
+  "debug_log": {
+    "description": "输出完整提示词日志",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后每次 RAG 注入会在日志中打印完整的 system_prompt，用于调试"
+  },
+  "private_poke_enabled": {
+    "description": "私聊戳一戳回复",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后私聊戳一戳会调用 LLM 生成回复（仅私聊，群聊由 group_chat_plus 处理）"
+  }
+}

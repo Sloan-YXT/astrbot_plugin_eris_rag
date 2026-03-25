@@ -1,0 +1,11 @@
+name: astrbot_plugin_eris_rag
+display_name: Eris RAG 人格增强
+desc: 连接本地 RAG 服务器，为 LLM 注入角色人格、行为规则和场景记忆
+help: |
+  自动在每次 LLM 请求前调用 RAG 服务器，注入角色人格增强 prompt。
+  命令：
+    /ask <问题> — 直接查询小说知识库
+    /rag_health — 检查 RAG 服务器状态
+version: v1.0.0
+author: "utt.yao"
+repo: ""
