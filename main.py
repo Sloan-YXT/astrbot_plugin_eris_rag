@@ -117,8 +117,8 @@ class ErisRAGPlugin(Star):
         if not enhanced_prompt:
             return
 
-        # 3) 追加 RAG 人格到 AstrBot 已有的 system_prompt 之后
-        req.system_prompt = (req.system_prompt or "") + "\n\n" + enhanced_prompt
+        # 3) RAG 人格放在前面，AstrBot 面板人格放在后面
+        req.system_prompt = enhanced_prompt + "\n\n" + (req.system_prompt or "")
 
         # 日志（调试用）
         metadata = data.get("metadata", {})
