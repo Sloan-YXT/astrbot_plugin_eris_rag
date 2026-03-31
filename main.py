@@ -7,7 +7,36 @@ from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.provider import ProviderRequest
 from astrbot.api.star import Context, Star, register
 from astrbot.core.star.filter.command import GreedyStr
-from astrbot.core.message.components import Poke
+
+_COMPRESS_PROMPT = """你是角色扮演人格提示词的压缩工具。
+
+【任务】精简下方人格提示词，只删除明确无用的冗余内容。宁可多保留，不可误删。
+
+【绝对不能删的内容（全部原样保留）】
+- 角色名字、身份、背景、成长经历
+- 性格特征、动机、价值观
+- 说话风格、语气、口癖、称呼习惯
+- 与对话对象的关系、态度、亲密度
+- 当前情绪状态、对话轮次
+- 行为规则、禁止事项
+- 用户自定义要求
+- 任何可能与当前对话相关的场景记忆
+
+【唯一允许精简的内容】
+- 与用户当前消息明显完全无关的场景记忆：保留标题和一句话摘要，删除详细描述
+- 完全重复出现的相同信息：只保留一处
+
+如果你不确定某段内容是否有用，就保留它。
+
+【用户当前消息（仅用于判断场景记忆的相关性）】
+{user_message}
+
+【输出要求】
+- 保持原文的分节结构（## 标题不变）
+- 直接输出压缩后的人格提示词，不要任何解释或前缀
+
+【待压缩的人格提示词】
+{enhanced_prompt}"""
 
 
 @register(
@@ -28,6 +57,8 @@ class ErisRAGPlugin(Star):
         self.context_count: int = min(max(config.get("context_count", 6), 0), 20)
         self.debug_log: bool = config.get("debug_log", False)
         self.private_poke_enabled: bool = config.get("private_poke_enabled", True)
+        self.compress_enabled: bool = config.get("compress_enabled", False)
+        self.compress_provider_id: str = config.get("compress_provider_id", "")
 
         self._session: aiohttp.ClientSession | None = None
 
@@ -50,6 +81,33 @@ class ErisRAGPlugin(Star):
             await self._session.close()
 
     # ── 工具 ──
+
+    async def _compress_prompt(self, user_message: str, enhanced_prompt: str, umo: str) -> str:
+        """用 LLM 根据用户消息压缩 RAG 返回的人格提示词。"""
+        try:
+            provider_id = self.compress_provider_id or await self.context.get_current_chat_provider_id(umo)
+            resp = await self.context.llm_generate(
+                chat_provider_id=provider_id,
+                prompt=_COMPRESS_PROMPT.format(
+                    user_message=user_message,
+                    enhanced_prompt=enhanced_prompt,
+                ),
+                system_prompt="你是一个文本压缩工具，只输出压缩结果，不输出任何其他内容。",
+            )
+            compressed = (resp.completion_text or "").strip()
+            if compressed:
+                logger.info(
+                    f"[ErisRAG] 压缩: {len(enhanced_prompt)} → {len(compressed)} 字符"
+                )
+                if self.debug_log:
+                    logger.info(
+                        f"[ErisRAG] === 压缩后 RAG prompt ===\n{compressed}\n"
+                        f"[ErisRAG] === END 压缩 ==="
+                    )
+                return compressed
+        except Exception:
+            logger.warning(f"[ErisRAG] 压缩失败，使用原文:\n{traceback.format_exc()}")
+        return enhanced_prompt
 
     @staticmethod
     def _extract_text(content) -> str:
@@ -116,6 +174,12 @@ class ErisRAGPlugin(Star):
         enhanced_prompt = data.get("enhanced_system_prompt", "")
         if not enhanced_prompt:
             return
+
+        # 2.5) 可选：压缩 RAG 内容
+        if self.compress_enabled:
+            enhanced_prompt = await self._compress_prompt(
+                user_message, enhanced_prompt, event.unified_msg_origin
+            )
 
         # 3) RAG 人格放在前面，AstrBot 面板人格放在后面
         req.system_prompt = enhanced_prompt + "\n\n" + (req.system_prompt or "")

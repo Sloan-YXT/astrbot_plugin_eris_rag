@@ -34,5 +34,18 @@
     "type": "bool",
     "default": true,
     "hint": "开启后私聊戳一戳会调用 LLM 生成回复（仅私聊，群聊由 group_chat_plus 处理）"
+  },
+  "compress_enabled": {
+    "description": "压缩 RAG 人格内容",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后会用 LLM 根据用户消息筛选压缩 RAG 返回的人格提示词，节省 token 但增加一次 LLM 调用延迟"
+  },
+  "compress_provider_id": {
+    "description": "压缩用 LLM",
+    "type": "string",
+    "_special": "select_provider",
+    "default": "",
+    "hint": "用于压缩人格内容的 LLM，留空则使用当前对话的主 LLM"
   }
 }
